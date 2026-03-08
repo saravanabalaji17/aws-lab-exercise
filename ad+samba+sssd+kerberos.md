@@ -1,0 +1,321 @@
+
+
+
+AD User Login
+     │
+     ▼
+Linux PAM
+     │
+     ▼
+SSSD
+     │
+     ├── LDAP → User lookup
+     │
+     └── Kerberos → Authentication
+             │
+             ▼
+      Active Directory
+
+
+#sevice iptables stop
+#iptables -F
+
+#chkconfig iptables off
+
+
+#setenforce 0
+#vi  vi /etc/sysconfig/selinux
+SELINUX=disabled
+
+
+
+# cat centos.repo
+[base]
+name=CentOS-6 - Base
+baseurl=http://ftp.iij.ad.jp/pub/linux/centos-vault/centos/6/os/x86_64/
+enabled=1
+gpgcheck=0
+
+[updates]
+name=CentOS-6 - Updates
+baseurl=http://ftp.iij.ad.jp/pub/linux/centos-vault/centos/6/updates/x86_64/
+enabled=1
+gpgcheck=0
+
+[extras]
+name=CentOS-6 - Extras
+baseurl=http://ftp.iij.ad.jp/pub/linux/centos-vault/centos/6/extras/x86_64/
+enabled=1
+gpgcheck=0
+
+
+
+
+
+
+Configure DNS (VERY IMPORTANT)
+===================================
+#cat /etc/resolv.conf
+search vspheretech.com
+nameserver <AD>
+
+#nslookup win-ad.vspheretech.com
+
+
+
+
+Set Hostname (FQDN required)
+===============================
+#hostname vm-1.vspheretech.com
+#hostname -f
+
+
+#vi /etc/hosts
+192.168.44.9 vm-1.vspheretech.com
+
+#vi /etc/sysconfig/network
+HOSTNAME=vm-1.vspheretech.com
+
+
+
+Time Synchronization
+==========================
+#ntpdate win-ad.vspheretech.com
+#ntpdate -q win-ad.vspheretech.com
+#cp /usr/share/zoneinfo/Asia/Kolkata /etc/localtime
+#date
+
+#yum install ntp -y
+#service ntpd start
+#chkconfig ntpd on
+
+#yum install nmap ntp samba bind-utils telnet -y
+
+Install Required Packages
+===============================
+#yum install samba samba-common samba-client krb5-workstation sssd openldap-clients oddjob oddjob-mkhomedir -y
+
+
+Configure Kerberos
+======================
+# cat /etc/krb5.conf
+[logging]
+ default = FILE:/var/log/krb5libs.log
+ kdc = FILE:/var/log/krb5kdc.log
+ admin_server = FILE:/var/log/kadmind.log
+
+[libdefaults]
+ default_realm = VSPHERETECH.COM
+ dns_lookup_realm = false
+ dns_lookup_kdc = false
+ ticket_lifetime = 24h
+ renew_lifetime = 7d
+ forwardable = true
+
+[realms]
+ VSPHERETECH.COM = {
+  kdc = vspheretech.com
+  admin_server = vspheretech.com
+ }
+
+[domain_realm]
+ .vspheretech.com = VSPHERETECH.COM
+ vspheretech.com = VSPHERETECH.COM
+
+
+#kinit user@DOMAIN.COM  #kinit administrator
+#klist
+
+Configure Samba
+================
+#vi /etc/samba/smb.conf
+
+[global]
+       workgroup = VSPHERETECH
+       password server = win-ad.vspheretech.com
+       security = ads
+       realm = VSPHERETECH.COM
+
+       idmap config * : backend = tdb
+       idmap config * : range = 10000-20000
+
+       winbind use default domain = true
+       winbind offline logon = false
+
+       template shell = /bin/bash
+       template homedir = /home/%U
+
+
+#service smb restart;service winbind restart
+
+#chkconfig smb on;chkconfig winbind on
+
+
+Join Linux to Active Directory
+===================================
+#net ads join -U administrator
+
+Example output:
+Enter administrator's password:
+Using short domain name -- VSPHERETECH
+Joined 'VM-1' to dns domain 'vspheretech.com'
+
+#net ads testjoin
+
+
+#net ads info
+
+# net ads status
+
+Configure SSSD
+==================
+#vi /etc/sssd/sssd.conf
+[sssd]
+services = nss, pam
+config_file_version = 2
+domains = vspheretech.com
+
+[domain/vspheretech.com]
+
+id_provider = ldap
+auth_provider = krb5
+chpass_provider = krb5
+
+ldap_uri = ldap://win-ad.vspheretech.com
+ldap_search_base = dc=vspheretech,dc=com
+
+krb5_server = win-ad.vspheretech.com
+krb5_realm = VSPHERETECH.COM
+
+cache_credentials = true
+enumerate = true
+
+
+
+#chmod 600 /etc/sssd/sssd.conf
+
+
+#service sssd start;chkconfig sssd on
+
+
+Configure NSS
+==================
+# authconfig --enablewinbind --enablewinbindauth  --enablemkhomedir --update
+
+#cat /etc/nsswitch.conf
+#cat /etc/nsswitch.conf |grep -v '#'
+
+passwd: files sss
+shadow: files sss
+group:  files sss
+
+
+optional
+============
+Configure PAM (Auto Home Directory)
+#vi /etc/pam.d/system-auth
+session required pam_mkhomedir.so skel=/etc/skel umask=0022
+
+Or enable oddjob:
+#authconfig --enablemkhomedir --update
+
+
+
+Test AD User Login
+=====================
+#id aduser
+#su - aduser
+
+
+#net ads info user sm
+#net ads info group
+#getent passwd sm
+#getent passwd vspheretech\\sm
+
+
+#wbinfo -u      # List AD users
+#wbinfo -g      # List AD groups
+#getent passwd  # Should show AD users
+#getent group   # Should show AD groups
+#wbinfo -a DOMAIN\\username%password  # Test authentication
+
+---------------------------------------------------------------------------------------------
+
+[root@vm-1 ~]# id sm
+uid=10000(sm) gid=10000(domain users) groups=10000(domain users),10001(linuxusers)
+---------------------------------------------------------------------------------------------
+[root@vm-1 ~]# net ads info user sm
+LDAP server: 192.168.44.8
+LDAP server name: win-ad.vspheretech.com
+Realm: VSPHERETECH.COM
+Bind Path: dc=VSPHERETECH,dc=COM
+LDAP port: 389
+Server time: Mon, 09 Mar 2026 00:06:27 IST
+KDC server: 192.168.44.8
+Server time offset: 0
+---------------------------------------------------------------------------------------------
+[root@vm-1 ~]# net ads info group linuxusers
+LDAP server: 192.168.44.8
+LDAP server name: win-ad.vspheretech.com
+Realm: VSPHERETECH.COM
+Bind Path: dc=VSPHERETECH,dc=COM
+LDAP port: 389
+Server time: Mon, 09 Mar 2026 00:06:41 IST
+KDC server: 192.168.44.8
+Server time offset: 0
+---------------------------------------------------------------------------------------------
+[root@vm-1 ~]# getent passwd sm
+sm:*:10000:10000:saravanabalaji m:/home/sm:/bin/bash
+---------------------------------------------------------------------------------------------
+[root@vm-1 ~]# getent passwd vspheretech\\sm
+sm:*:10000:10000:saravanabalaji m:/home/sm:/bin/bash
+---------------------------------------------------------------------------------------------
+[root@vm-1 ~]# wbinfo -u
+administrator
+guest
+krbtgt
+sm
+---------------------------------------------------------------------------------------------
+[root@vm-1 ~]# wbinfo -g
+domain computers
+domain controllers
+schema admins
+enterprise admins
+cert publishers
+domain admins
+domain users
+domain guests
+group policy creator owners
+ras and ias servers
+allowed rodc password replication group
+denied rodc password replication group
+read-only domain controllers
+enterprise read-only domain controllers
+cloneable domain controllers
+protected users
+key admins
+enterprise key admins
+dnsadmins
+dnsupdateproxy
+linuxusers
+---------------------------------------------------------------------------------------------
+[root@vm-1 ~]# wbinfo -a vspheretech\\sm%Admin@123
+plaintext password authentication succeeded
+challenge/response password authentication succeeded
+[root@vm-1 ~]#
+---------------------------------------------------------------------------------------------
+
+AD User Login
+     │
+     ▼
+Linux PAM
+     │
+     ▼
+SSSD
+     │
+     ├── LDAP → User lookup
+     │
+     └── Kerberos → Authentication
+             │
+             ▼
+      Active Directory
