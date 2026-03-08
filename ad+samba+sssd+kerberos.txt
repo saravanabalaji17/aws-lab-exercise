@@ -130,6 +130,11 @@ Configure Kerberos
 #kinit user@DOMAIN.COM  #kinit administrator
 #klist
 
+If this fails → DNS or time problem.
+
+
+
+
 Configure Samba
 ================
 #vi /etc/samba/smb.conf
@@ -149,7 +154,7 @@ Configure Samba
        template shell = /bin/bash
        template homedir = /home/%U
 
-
+#testparm
 #service smb restart;service winbind restart
 
 #chkconfig smb on;chkconfig winbind on
@@ -184,6 +189,10 @@ Joined 'VM-1' to dns domain 'vspheretech.com'
 # net ads status
 
 
+
+Best Troubleshooting Command
+Run with debug:
+#net ads join -U administrator -d 3
 ---------------------------------------------------------------------------------------------------
 Example output
 ====================
@@ -379,17 +388,88 @@ service sssd restart
 
 
 
-AD User Login
-     │
-     ▼
-Linux PAM
-     │
-     ▼
-SSSD
-     │
-     ├── LDAP → User lookup
-     │
-     └── Kerberos → Authentication
-             │
-             ▼
-      Active Directory
+
+[root@vm-1 ~]# testparm
+Load smb config files from /etc/samba/smb.conf
+rlimit_max: increasing rlimit_max (1024) to minimum Windows limit (16384)
+Processing section "[homes]"
+Processing section "[printers]"
+Loaded services file OK.
+WARNING: The setting 'security=ads' should NOT be combined with the 'password server' parameter.
+(by default Samba will discover the correct DC to contact automatically).
+Server role: ROLE_DOMAIN_MEMBER
+Press enter to see a dump of your service definitions
+
+[global]
+        workgroup = VSPHERETECH
+        realm = VSPHERETECH.COM
+        security = ADS
+        password server = win-ad.vspheretech.com
+        log file = /var/log/samba/log.%m
+        max log size = 50
+        client signing = required
+        template homedir = /home/%U
+        template shell = /bin/bash
+        winbind use default domain = Yes
+        idmap config * : range = 10000-20000
+        idmap config * : backend = tdb
+        cups options = raw
+
+[homes]
+        comment = Home Directories
+        read only = No
+        browseable = No
+
+[printers]
+        comment = All Printers
+        path = /var/spool/samba
+        printable = Yes
+        print ok = Yes
+        browseable = No
+[root@vm-1 ~]#
+
+
+==================================================================================================================
+Important Reality
+==========================
+CentOS 6.6 + Samba 3.6 = SMB1 only
+Modern Windows Server 2019 / Windows Server 2022 disable SMB1, which breaks AD join.
+
+⚠️ Security Note:
+------------------------
+SMB1 is vulnerable (used in attacks like WannaCry). It should only be enabled for very old systems like legacy Linux or NAS devices.
+
+-----------------------------------------------------------------------------------------------------------------
+
+
+[root@vm-1 ~]# net ads join -U administrator
+Enter administrator's password:
+Failed to join domain: failed to lookup DC info for domain 'VSPHERETECH.COM' over rpc: NT_STATUS_CONNECTION_RESET
+[root@vm-1 ~]#
+
+#smbd -V
+#smbstatus
+
+[root@vm-1 ~]# wbinfo -t
+checking the trust secret for domain VSPHERETECH via RPC calls failed
+error code was NT_STATUS_DOMAIN_CONTROLLER_NOT_FOUND (0xc0000233)
+failed to call wbcCheckTrustCredentials: WBC_ERR_AUTH_ERROR
+Could not check secret
+[root@vm-1 ~]#
+
+
+Enable/Disable SMB1 Protocol
+----------------------------------
+Action	     Command
+Enable SMB1	Enable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol
+Disable SMB1	Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol
+Check status	Get-WindowsOptionalFeature -Online -FeatureName SMB1Protocol
+
+
+Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart
+Enable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart
+
+Restart System (if required)
+---------------------------------
+Restart-Computer
+
