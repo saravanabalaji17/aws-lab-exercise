@@ -129,6 +129,7 @@ Configure Kerberos
 
 #kinit user@DOMAIN.COM  #kinit administrator
 #klist
+#klist -k
 
 If this fails → DNS or time problem.
 
@@ -384,9 +385,23 @@ service winbind restart
 service sssd restart
 
 
+sssd commands
+-----------------
 
+sss_cache -E
+service sssd restart
 
+service sssd stop
+sssd -i -d 9
 
+tail -f /var/log/sssd/sssd.log
+tail -f /var/log/sssd/sssd_vspheretech.com.log
+
+ldapsearch -x -H ldap://win-ad.vspheretech.com \
+  -D "administrator@vspheretech.com" \
+  -w 'Admin@123' \
+  -b "dc=vspheretech,dc=com" "(sAMAccountName=sm)"
+-------------------------------------------------------------------------------------------
 
 
 [root@vm-1 ~]# testparm
