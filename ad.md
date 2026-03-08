@@ -1,3 +1,14 @@
+
+
+#sevice iptables off
+#iptableds -F
+
+
+#setenforce 0
+#vi  vi /etc/sysconfig/selinux
+SELINUX=disabled
+
+
 #hostname vm-1.vspheretech.com
 #hostname -f
 
