@@ -439,6 +439,15 @@ Modern Windows Server 2019 / Windows Server 2022 disable SMB1, which breaks AD j
 ------------------------
 SMB1 is vulnerable (used in attacks like WannaCry). It should only be enabled for very old systems like legacy Linux or NAS devices.
 
+
+Enterprise Reality
+--------------------------
+
+Most companies choose one of these three approaches:
+
+1️⃣ Temporary SMB1 enable for join
+2️⃣ Legacy DC with SMB1
+3️⃣ SSSD + Kerberos + LDAP (most recommended)
 -----------------------------------------------------------------------------------------------------------------
 
 
