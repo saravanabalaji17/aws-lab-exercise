@@ -51,6 +51,10 @@ gpgcheck=0
 
 
 
+Install prerequisite Packages
+===============================
+#yum install nmap ntp samba bind-utils telnet -y
+
 
 
 Configure DNS (VERY IMPORTANT)
@@ -89,7 +93,7 @@ Time Synchronization
 #service ntpd start
 #chkconfig ntpd on
 
-#yum install nmap ntp samba bind-utils telnet -y
+
 
 Install Required Packages
 ===============================
@@ -153,8 +157,20 @@ Configure Samba
 
 Join Linux to Active Directory
 ===================================
+-------------------------------------------------------------
 #net ads join -U administrator
+(or) 
+#net ads join -k
+Explanation:
+------------------------------------------------------------
+|Option	     | Meaning                                    |
+|net ads join	|Join Active Directory                       |
+|-k	          |Use Kerberos ticket instead of password     |
+------------------------------------------------------------
 
+
+
+#net ads join -U administrator 
 Example output:
 Enter administrator's password:
 Using short domain name -- VSPHERETECH
@@ -166,6 +182,29 @@ Joined 'VM-1' to dns domain 'vspheretech.com'
 #net ads info
 
 # net ads status
+
+
+---------------------------------------------------------------------------------------------------
+Example output
+====================
+[root@vm-1 ~]# kinit administrator
+Password for administrator@VSPHERETECH.COM:
+[root@vm-1 ~]# klist
+Ticket cache: FILE:/tmp/krb5cc_0
+Default principal: administrator@VSPHERETECH.COM
+
+Valid starting     Expires            Service principal
+03/09/26 00:22:03  03/09/26 10:22:05  krbtgt/VSPHERETECH.COM@VSPHERETECH.COM
+        renew until 03/16/26 00:22:03
+[root@vm-1 ~]# net ads join -k
+Using short domain name -- VSPHERETECH
+Joined 'VM-1' to dns domain 'vspheretech.com'
+[root@vm-1 ~]#
+---------------------------------------------------------------------------------------------------
+
+
+
+
 
 Configure SSSD
 ==================
@@ -232,7 +271,8 @@ Test AD User Login
 #getent passwd sm
 #getent passwd vspheretech\\sm
 
-
+#wbinfo -t
+#wbinfo -n sm
 #wbinfo -u      # List AD users
 #wbinfo -g      # List AD groups
 #getent passwd  # Should show AD users
@@ -304,6 +344,40 @@ plaintext password authentication succeeded
 challenge/response password authentication succeeded
 [root@vm-1 ~]#
 ---------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+Leave Domain
+================
+net ads leave -U administrator
+
+
+
+Typical Re-Join Procedure (Used in Real Environments)
+========================================================
+
+If AD login fails:
+-----------------------
+
+net ads leave -U administrator
+kdestroy
+rm -f /etc/krb5.keytab
+net ads join -U administrator
+
+Restart services:
+-----------------------
+service smb restart
+service winbind restart
+service sssd restart
+
+
+
+
+
 
 AD User Login
      │
