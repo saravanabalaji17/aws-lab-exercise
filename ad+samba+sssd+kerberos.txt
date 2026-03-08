@@ -93,7 +93,7 @@ Time Synchronization
 
 Install Required Packages
 ===============================
-#yum install samba samba-common samba-client krb5-workstation sssd openldap-clients oddjob oddjob-mkhomedir -y
+#yum install samba samba-common samba-client samba-winbind samba-winbind-clients krb5-workstation sssd openldap-clients oddjob oddjob-mkhomedir -y
 
 
 Configure Kerberos
