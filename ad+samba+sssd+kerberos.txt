@@ -162,12 +162,12 @@ Join Linux to Active Directory
 (or) 
 #net ads join -k
 Explanation:
-------------------------------------------------------------
-|Option	     | Meaning                                    |
-|net ads join	|Join Active Directory                       |
-|-k	          |Use Kerberos ticket instead of password     |
-------------------------------------------------------------
 
+Option	      Meaning
+net ads join - Join Active Directory
+-k	        - Use Kerberos ticket instead of password
+
+----------------------------------------------------------------
 
 
 #net ads join -U administrator 
