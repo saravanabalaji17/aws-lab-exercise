@@ -201,20 +201,7 @@ Run with debug:
 
 
 
--------------------------------------------------------------------------
-telnet 192.168.44.8 445
-telnet 192.168.44.8 135
-telnet 192.168.44.8 389
-telnet 192.168.44.8 88
 
-ping win-ad.vspheretech.com
-nmap -p 139,445 win-ad.vspheretech.com
-
-service ntpd stop
-ntpdate win-ad.vspheretech.com
-ntpq -p
-ntpdate -u win-ad.vspheretech.com
-nslookup -type=SRV _ldap._tcp.vspheretech.com
 ---------------------------------------------------------------------------------------------------
 Example output
 ====================
@@ -424,6 +411,22 @@ ldapsearch -x -H ldap://win-ad.vspheretech.com \
   -D "administrator@vspheretech.com" \
   -w 'Admin@123' \
   -b "dc=vspheretech,dc=com" "(sAMAccountName=sm)"
+
+
+-------------------------------------------------------------------------
+telnet 192.168.44.8 445
+telnet 192.168.44.8 135
+telnet 192.168.44.8 389
+telnet 192.168.44.8 88
+
+ping win-ad.vspheretech.com
+nmap -p 139,445 win-ad.vspheretech.com
+
+service ntpd stop
+ntpdate win-ad.vspheretech.com
+ntpq -p
+ntpdate -u win-ad.vspheretech.com
+nslookup -type=SRV _ldap._tcp.vspheretech.com
 -------------------------------------------------------------------------------------------
 
 
