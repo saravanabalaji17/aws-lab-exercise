@@ -1,5 +1,9 @@
+winbind,adcli,realm
 
-
+kerberos
+ad_provider,ldap_provider
+sssd
+---------------------------------------------------------------------------
 
 AD User Login
      │
@@ -186,7 +190,7 @@ Joined 'VM-1' to dns domain 'vspheretech.com'
 
 
 #net ads info
-
+#net ads lookup
 # net ads status
 
 
@@ -194,6 +198,23 @@ Joined 'VM-1' to dns domain 'vspheretech.com'
 Best Troubleshooting Command
 Run with debug:
 #net ads join -U administrator -d 3
+
+
+
+-------------------------------------------------------------------------
+telnet 192.168.44.8 445
+telnet 192.168.44.8 135
+telnet 192.168.44.8 389
+telnet 192.168.44.8 88
+
+ping win-ad.vspheretech.com
+nmap -p 139,445 win-ad.vspheretech.com
+
+service ntpd stop
+ntpdate win-ad.vspheretech.com
+ntpq -p
+ntpdate -u win-ad.vspheretech.com
+nslookup -type=SRV _ldap._tcp.vspheretech.com
 ---------------------------------------------------------------------------------------------------
 Example output
 ====================
@@ -376,6 +397,8 @@ If AD login fails:
 net ads leave -U administrator
 kdestroy
 rm -f /etc/krb5.keytab
+rm -f /var/lib/samba/secrets.tdb
+
 net ads join -U administrator
 
 Restart services:
