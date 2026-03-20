@@ -200,4 +200,222 @@ curl -I https://test.gokultech.shop
 
 ```
 
+Looks like you mean **authentication via Okta for SFTPGo** 👍
+(“octa” → **Okta**)
+
+This is a bit different from LDAP—Okta uses **SAML / OIDC (SSO)**, and **SFTPGo supports OIDC**, not direct SAML.
+
+So the correct approach is:
+
+👉 **Okta → OIDC → SFTPGo**
+
+---
+
+# 🚀 1. Architecture Flow
+
+```text
+User → Okta Login (SSO)
+        ↓
+   OIDC Token
+        ↓
+     SFTPGo
+        ↓
+ Access Granted
+```
+
+---
+
+# ⚙️ 2. Step 1: Create App in Okta
+
+Login to Okta Admin → Applications → Create App
+
+### Choose:
+
+* **OIDC - OpenID Connect**
+* Application type: **Web**
+
+---
+
+## 🔑 Configure App
+
+### General Settings:
+
+```text
+App Name: SFTPGo
+```
+
+### Sign-in Redirect URI:
+
+```text
+https://test.gokultech.shop/web/oidc/callback
+```
+
+### Assign users/groups as needed
+
+---
+
+## 🔐 Copy Credentials
+
+After creation, note:
+
+```text
+Client ID: xxxxxxxxx
+Client Secret: xxxxxxxxx
+Issuer URL: https://your-org.okta.com/oauth2/default
+```
+
+---
+
+# ⚙️ 3. Step 2: Configure SFTPGo OIDC
+
+Edit config:
+
+```bash
+vi /etc/sftpgo/sftpgo.json
+```
+
+---
+
+## Add OIDC Configuration
+
+```json
+{
+  "httpd": {
+    "bindings": [
+      {
+        "port": 8080
+      }
+    ],
+    "oidc": {
+      "client_id": "YOUR_CLIENT_ID",
+      "client_secret": "YOUR_CLIENT_SECRET",
+      "config_url": "https://your-org.okta.com/oauth2/default/.well-known/openid-configuration",
+      "redirect_base_url": "https://test.gokultech.shop",
+      "username_field": "preferred_username",
+      "role_field": "groups",
+      "implicit_roles": false
+    }
+  }
+}
+```
+
+---
+
+# 🔄 4. Restart SFTPGo
+
+```bash
+systemctl restart sftpgo
+```
+
+---
+
+# 🌐 5. Login Flow (Web UI)
+
+👉 Open:
+
+```text
+https://test.gokultech.shop
+```
+
+👉 Click:
+**Login with OIDC / SSO**
+
+👉 Redirects to Okta → Login → Back to SFTPGo ✅
+
+---
+
+# 👤 6. User Handling
+
+SFTPGo will:
+
+* Auto-create users after login
+* Use Okta username
+* Assign default home directory
+
+---
+
+## 📁 Optional: Home Directory Mapping
+
+```json
+"home_dir": "/data/sftp/%username%"
+```
+
+---
+
+# 🔐 7. Restrict Access by Okta Groups
+
+In Okta:
+
+* Create group: `SFTPUsers`
+* Assign users
+
+In SFTPGo:
+
+```json
+"role_field": "groups"
+```
+
+👉 You can map:
+
+* group → permissions
+* group → folders
+
+---
+
+# ⚠️ 8. Important Limitations
+
+👉 OIDC works for:
+
+* ✅ Web UI login
+
+👉 OIDC does NOT work for:
+
+* ❌ SFTP (port 2022)
+* ❌ CLI login
+
+---
+
+# 💡 9. Real Production Design
+
+Use **hybrid auth**:
+
+| Access Type          | Auth Method        |
+| -------------------- | ------------------ |
+| Web UI               | Okta (OIDC)        |
+| SFTP (file transfer) | LDAP / Local users |
+
+---
+
+# 🔥 10. Best Practice
+
+Combine:
+
+* Okta → Web SSO
+* Microsoft Active Directory → SFTP login
+* SSH Keys → Secure file transfer
+
+---
+
+# 🧪 11. Test
+
+* Open UI → SSO login works ✅
+* Try SFTP:
+
+```bash
+sftp -P 2022 user@test.gokultech.shop
+```
+
+👉 This will NOT use Okta (expected behavior)
+
+---
+
+# 🚀 If You Want Next Level
+
+I can help you set:
+
+👉 Okta → SAML → LDAP bridge (for SFTP login)
+👉 Full enterprise architecture diagram
+👉 Azure Entra ID + Okta integration
+
+Just tell 👍
 
